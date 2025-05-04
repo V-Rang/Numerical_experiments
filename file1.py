@@ -161,22 +161,17 @@ def random_fourier_ic(x, n_mode, seed=None):
 if __name__ == "__main__":
     # parameters
     m_val, n_val, p_val = 0.65, 0.05, 0.3  
-    
-    # a_val, b_val = 1.5 , -0.5
-    scale_factor = 0.1
+    # a_val, b_val = 1.3 , -0.3
+    scale_factor = 0.3
     dx    = 0.005
     dt = scale_factor * dx
     x = np.arange(0,1+dx, dx)
     n_mode = 3
     u0 = random_fourier_ic(x, n_mode, seed=42)
     nsteps = 200
-
     # us = simulate(a_val, b_val, dx, dt, u0, nsteps, verbose = True, tol = 1e-2)
-    
     us = simulate_3point(m_val, n_val, p_val, dx, dt, u0, nsteps)
-
     print(np.linalg.norm(us[0]), ":", np.linalg.norm(us[-1]))
-
 
 import matplotlib.pyplot as plt
 plt.plot(x, u0)
