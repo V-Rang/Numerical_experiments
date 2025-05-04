@@ -1,14 +1,20 @@
 import numpy as np
 
-def D_upwind(u, dx):
-    """First-order upwind derivative (c=+1) with periodic BCs."""
-    return (u - np.roll(u, 1)) / dx
+# def D_upwind(u, dx):
+#     """First-order upwind derivative (c=+1) with periodic BCs."""
+#     return (u - np.roll(u, 1)) / dx
 
-def D_central(u, dx):
-    """Second-order central derivative with periodic BCs."""
-    return (np.roll(u, -1) - np.roll(u, +1)) / (2*dx)
 
-def simulate(a, b, dx, dt, u0, nsteps, scheme='upwind', verbose = True, tol = 1e-2):
+def D_upwind_periodic_matrix(N, dx):
+    P = np.eye(N);  
+    P = np.roll(P, 1, axis=0)
+
+    # D = (I − P) / dx
+    D = (np.eye(N) - P) / dx
+    return D
+
+
+def simulate(a, b, dx, dt, u0, nsteps, verbose = True, tol = 1e-2):
     """
     Simulate u_{n+1} = u_n - (dt/dx)[a*D u_{n-1} + b*D u_n].
 
@@ -23,14 +29,7 @@ def simulate(a, b, dx, dt, u0, nsteps, scheme='upwind', verbose = True, tol = 1e
       us : array of shape (nsteps+1, len(u0)), containing u^0,…,u^nsteps
     """
 
-    # choose derivative function
-    if scheme == 'upwind':
-        D = D_upwind
-    elif scheme == 'central':
-        D = D_central
-    else:
-        raise ValueError("scheme must be 'upwind' or 'central'")
-
+    D = D_upwind_periodic_matrix(u0.shape[0], dx)
 
     M0 = np.max(np.abs(u0))
     threshold = (1 + tol)*M0
@@ -40,21 +39,23 @@ def simulate(a, b, dx, dt, u0, nsteps, scheme='upwind', verbose = True, tol = 1e
     us[0] = u0.copy()
 
     # first step: use a 1‑step method (e.g. forward‐Euler => a=0 term only)
-    us[1] = u0 - (dt/dx) * b * D(u0, dx)
+    us[1] = u0 - (dt/dx) * b * D @ u0
 
     # now apply the two‑step formula
     for n in range(1, nsteps):
-        Du_nm1 = D(us[n-1], dx)
-        Du_n   = D(us[n  ], dx)
+        # Du_nm1 = D(us[n-1], dx)
+        # Du_n   = D(us[n  ], dx)
+        
+        Du_nm1 = D @ us[n-1]
+        Du_n   = D @ us[n  ]
+        
         u_next = us[n] - (dt/dx)*(a*Du_nm1 + b*Du_n)
 
         us[n+1] = u_next
 
     return us
 
-
-def simulate_3point(m, n_coeff, p, dx, dt, u0, nsteps,
-                    scheme='upwind', verbose=True, tol=1e-6):
+def simulate_3point(m, n_coeff, p, dx, dt, u0, nsteps, verbose=True, tol=1e-6):
     """
     Simulate the 3‑point stencil
       u_{n+1} = u_n - (dt/dx)[ m D u_{n-2} + n_coeff D u_{n-1} + p D u_n ]
@@ -76,14 +77,7 @@ def simulate_3point(m, n_coeff, p, dx, dt, u0, nsteps,
       us      : array of shape (Nsteps+1, len(u0)), with u^0…u^Nsteps
       blew_up : bool, True if we stopped early due to blow‑up
     """
-    # pick derivative
-    if scheme=='upwind':
-        D = D_upwind
-    elif scheme=='central':
-        D = D_central
-    else:
-        raise ValueError("scheme must be 'upwind' or 'central'")
-
+    D = D_upwind_periodic_matrix(u0.shape[0], dx)
     N = u0.size
     us = np.zeros((nsteps+1, N))
     us[0] = u0.copy()
@@ -93,7 +87,8 @@ def simulate_3point(m, n_coeff, p, dx, dt, u0, nsteps,
     threshold = (1 + tol) * M0
 
     # step 1: only the p‐term (like a forward‐Euler bootstrap)
-    us[1] = u0 - (dt/dx) * p * D(u0, dx)
+    # us[1] = u0 - (dt/dx) * p * D(u0, dx)
+    us[1] = u0 - (dt/dx) * p * D @ u0
 
     # if np.max(np.abs(us[1])) > threshold:
     #     if verbose:
@@ -102,7 +97,10 @@ def simulate_3point(m, n_coeff, p, dx, dt, u0, nsteps,
 
     if nsteps >= 2:
         # step 2: use n_coeff and p (m term is zero)
-        us[2] = us[1] - (dt/dx)*(n_coeff*D(us[0],dx) + p*D(us[1],dx))
+        # us[2] = us[1] - (dt/dx)*(n_coeff*D(us[0],dx) + p*D(us[1],dx))
+        us[2] = us[1] - (dt/dx)*(n_coeff*D @ us[0] + p*D @ us[1])
+        
+        
         # if np.max(np.abs(us[2])) > threshold:
         #     if verbose:
         #         print("Blow‑up at step 2")
@@ -110,9 +108,13 @@ def simulate_3point(m, n_coeff, p, dx, dt, u0, nsteps,
 
     # general 3‑point stencil for n>=2
     for k in range(2, nsteps):
-        Du_km2 = D(us[k-2], dx)
-        Du_km1 = D(us[k-1], dx)
-        Du_k    = D(us[k  ], dx)
+        # Du_km2 = D(us[k-2], dx)
+        # Du_km1 = D(us[k-1], dx)
+        # Du_k    = D(us[k  ], dx)
+
+        Du_km2 = D @ us[k-2]
+        Du_km1 = D @ us[k-1]
+        Du_k    = D @ us[k  ]
 
         u_next = us[k] - (dt/dx)*(m*Du_km2 + n_coeff*Du_km1 + p*Du_k)
 
@@ -158,7 +160,9 @@ def random_fourier_ic(x, n_mode, seed=None):
 # example usage
 if __name__ == "__main__":
     # parameters
-    m_val, n_val, p_val = 1., 0.0, 0.0      # e.g. AB2: a=-0.5, b=1.5
+    m_val, n_val, p_val = 0.65, 0.05, 0.3  
+    
+    # a_val, b_val = 1.5 , -0.5
     scale_factor = 0.1
     dx    = 0.005
     dt = scale_factor * dx
@@ -166,7 +170,17 @@ if __name__ == "__main__":
     n_mode = 3
     u0 = random_fourier_ic(x, n_mode, seed=42)
     nsteps = 200
-    us = simulate_3point(m_val, n_val, p_val, dx, dt, u0, nsteps, scheme='central')
-    # if norm of last time is large, simulation blows up.
+
+    # us = simulate(a_val, b_val, dx, dt, u0, nsteps, verbose = True, tol = 1e-2)
+    
+    us = simulate_3point(m_val, n_val, p_val, dx, dt, u0, nsteps)
+
     print(np.linalg.norm(us[0]), ":", np.linalg.norm(us[-1]))
 
+
+import matplotlib.pyplot as plt
+plt.plot(x, u0)
+plt.plot(x, us[0],label='t=0')
+plt.plot(x, us[-1],label='t=-1')
+plt.legend()
+plt.show()
