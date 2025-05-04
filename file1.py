@@ -5,12 +5,12 @@ import numpy as np
 #     return (u - np.roll(u, 1)) / dx
 
 
-def D_upwind_periodic_matrix(N, dx):
+def D_upwind_periodic_matrix(N):
     P = np.eye(N);  
     P = np.roll(P, 1, axis=0)
 
     # D = (I − P) / dx
-    D = (np.eye(N) - P) / dx
+    D = (np.eye(N) - P)
     return D
 
 
@@ -29,7 +29,7 @@ def simulate(a, b, dx, dt, u0, nsteps, verbose = True, tol = 1e-2):
       us : array of shape (nsteps+1, len(u0)), containing u^0,…,u^nsteps
     """
 
-    D = D_upwind_periodic_matrix(u0.shape[0], dx)
+    D = D_upwind_periodic_matrix(u0.shape[0])
 
     M0 = np.max(np.abs(u0))
     threshold = (1 + tol)*M0
@@ -77,7 +77,7 @@ def simulate_3point(m, n_coeff, p, dx, dt, u0, nsteps, verbose=True, tol=1e-6):
       us      : array of shape (Nsteps+1, len(u0)), with u^0…u^Nsteps
       blew_up : bool, True if we stopped early due to blow‑up
     """
-    D = D_upwind_periodic_matrix(u0.shape[0], dx)
+    D = D_upwind_periodic_matrix(u0.shape[0])
     N = u0.size
     us = np.zeros((nsteps+1, N))
     us[0] = u0.copy()
