@@ -1,3 +1,5 @@
+# simulating du/dt + du/dx = 0.
+
 import numpy as np
 
 # def D_upwind(u, dx):
