@@ -1,3 +1,8 @@
+# stability analysis for del{y}/del{t} + del{y}/del{x} = 0 using 2-time step discretization.
+# y_{n+1} = y_{n} + del{t}[ a( -del{y}/del{x}  )_{n}  + b(  -del{y}/del{x}  )_{n-1} + c(  -del{y}/del{x}  )_{n-2}    ]
+# y_{n+1} = y_{n} - del{t}/del{x}[  aDy_{n} + bDy_{n-1} + cDy_{n-2}], where D is upwind matrix.
+# substituting y_{n} = r^{n}v, where v is eigenvector of D corresponding to the largest eigenvalue \mu, Dv = \mu{v}. 
+
 import numpy as np
 import matplotlib.pyplot as plt
 
